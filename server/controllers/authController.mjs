@@ -82,6 +82,25 @@ export const userinfo = async (req, res) => {
       .status(200)
       .json({ message: "User found successfully", success: true, data:user });
   } catch (error) {
+    return res.status(500).json({
+      message: "Internal server error while getting user info",
+      success: false,
+    });
+  }
+};
+
+export const usersList = async (req, res) => {
+  try {
+    const users = await User.find({role: "user"}).select("name role _id");
+    if (!users) {
+      return res
+        .status(404)
+        .json({ message: "User not found", success: false });
+    }
+    return res
+      .status(200)
+      .json({ message: "User found successfully", success: true, data:users });
+  } catch (error) {
     console.log(error);
     return res.status(500).json({
       message: "Internal server error while getting user info",

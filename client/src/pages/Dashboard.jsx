@@ -2,24 +2,13 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const users = ["Anand", "Rahul", "Suresh"];
-
 const Dashboard = () => {
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: "Design Login Page",
-      description: "Create responsive login UI",
-      dueDate: "2025-01-10",
-      status: "pending",
-      priority: "high",
-      assignedTo: "Anand",
-    },
-  ]);
+  const [tasks, setTasks] = useState([]);
 
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState({ role: "admin" });
+  const [users, setUsers] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -43,7 +32,7 @@ const Dashboard = () => {
     setTaskForm({ ...taskForm, [e.target.name]: e.target.value });
   };
 
-  const handleSubmitTask = (e) => {
+  const handleSubmitTask = async (e) => {
     e.preventDefault();
 
     if (isEditing) {
@@ -52,15 +41,49 @@ const Dashboard = () => {
           task.id === selectedTaskId ? { ...task, ...taskForm } : task
         )
       );
+      try {
+        const response = await axios.put(
+          `http://localhost:5000/api/tasks/${selectedTaskId}`,
+          taskForm,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("auth")}`,
+            },
+          }
+        );
+        if (response.data.success) {
+          alert(response.data.message);
+          getTaskList();
+        }
+      } catch (error) {
+        alert(
+          error?.response?.data?.message ||
+            error?.response?.message ||
+            error?.message
+        );
+      }
     } else {
-      setTasks([
-        ...tasks,
-        {
-          id: Date.now(),
-          ...taskForm,
-          status: "pending",
-        },
-      ]);
+      try {
+        const response = await axios.post(
+          "http://localhost:5000/api/tasks/create",
+          taskForm,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("auth")}`,
+            },
+          }
+        );
+        if (response.data.success) {
+          alert(response.data.message);
+          getTaskList();
+        }
+      } catch (error) {
+        alert(
+          error?.response?.data?.message ||
+            error?.response?.message ||
+            error?.message
+        );
+      }
     }
 
     resetModal();
@@ -81,11 +104,11 @@ const Dashboard = () => {
 
   const handleEdit = (task) => {
     setIsEditing(true);
-    setSelectedTaskId(task.id);
+    setSelectedTaskId(task._id);
     setTaskForm({
       title: task.title,
       description: task.description,
-      dueDate: task.dueDate,
+      dueDate: task.dueDate.split("T")[0],
       priority: task.priority,
       assignedTo: task.assignedTo,
     });
@@ -97,18 +120,51 @@ const Dashboard = () => {
     setShowViewModal(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this task?")) {
-      setTasks(tasks.filter((task) => task.id !== id));
+      try {
+        const response = await axios.delete(
+          `http://localhost:5000/api/tasks/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("auth")}`,
+            },
+          }
+        );
+        if (response.data.success) {
+          getTaskList();
+        }
+      } catch (error) {
+        alert(
+          error?.response?.data?.message ||
+            error?.response?.message ||
+            error?.message
+        );
+      }
     }
   };
 
-  const handleStatusUpdate = (id) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === id ? { ...task, status: "completed" } : task
-      )
-    );
+  const handleStatusUpdate = async (id) => {
+    try {
+      const response = await axios.put(
+        `http://localhost:5000/api/tasks/status/${id}`,
+        { status: "completed" },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("auth")}`,
+          },
+        }
+      );
+      if (response.data.success) {
+        setTasks(response.data.tasks);
+      }
+    } catch (error) {
+      alert(
+        error?.response?.data?.message ||
+          error?.response?.message ||
+          error?.message
+      );
+    }
   };
 
   const getUserInfo = async () => {
@@ -137,14 +193,66 @@ const Dashboard = () => {
     }
   };
 
-  const visibleTasks =
-    userInfo?.role === "admin"
-      ? tasks
-      : tasks.filter((task) => task.assignedTo === userInfo?.name);
+  const getAllUsersList = async () => {
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/users-list",
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("auth")}`,
+          },
+        }
+      );
+      if (response.data.success) {
+        setUsers(response.data.data);
+      }
+    } catch (error) {
+      alert(
+        error?.response?.data?.message ||
+          error?.response?.message ||
+          error?.message
+      );
+    }
+  };
+
+  const getTaskList = async () => {
+    try {
+      const url =
+        userInfo.role === "admin"
+          ? "http://localhost:5000/api/tasks"
+          : `http://localhost:5000/api/tasks/${userInfo._id}`;
+      const response = await axios.post(
+        url,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("auth")}`,
+          },
+        }
+      );
+      console.log(response.data.tasks);
+      if (response.data.success) {
+        setTasks(response.data.tasks);
+      }
+    } catch (error) {
+      alert(
+        error?.response?.data?.message ||
+          error?.response?.message ||
+          error?.message
+      );
+    }
+  };
 
   useEffect(() => {
     getUserInfo();
+    getAllUsersList();
   }, []);
+  useEffect(() => {
+    if (userInfo?._id) {
+      getTaskList();
+    }
+  }, [userInfo]);
 
   if (loading) {
     return (
@@ -185,10 +293,10 @@ const Dashboard = () => {
           </thead>
 
           <tbody>
-            {visibleTasks.map((task) => (
-              <tr key={task.id} className="border-t">
+            {tasks.map((task) => (
+              <tr key={task._id} className="border-t">
                 <td className="p-3">{task.title}</td>
-                <td className="p-3">{task.dueDate}</td>
+                <td className="p-3">{task.dueDate.split("T")[0]}</td>
                 <td className="p-3 capitalize">{task.priority}</td>
                 <td className="p-3 capitalize">
                   <span
@@ -212,7 +320,7 @@ const Dashboard = () => {
 
                   {userInfo.role === "user" && task.status !== "completed" && (
                     <button
-                      onClick={() => handleStatusUpdate(task.id)}
+                      onClick={() => handleStatusUpdate(task._id)}
                       className="text-green-600 hover:underline"
                     >
                       Mark As Complete
@@ -228,7 +336,7 @@ const Dashboard = () => {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(task.id)}
+                        onClick={() => handleDelete(task._id)}
                         className="text-red-600 hover:underline"
                       >
                         Delete
@@ -286,7 +394,6 @@ const Dashboard = () => {
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
               </select>
-
               <select
                 name="assignedTo"
                 required
@@ -296,8 +403,8 @@ const Dashboard = () => {
               >
                 <option value="">Assign User</option>
                 {users.map((u) => (
-                  <option key={u} value={u}>
-                    {u}
+                  <option key={u._id} value={u._id}>
+                    {u.name}
                   </option>
                 ))}
               </select>
