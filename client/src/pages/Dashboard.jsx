@@ -231,7 +231,6 @@ const Dashboard = () => {
           },
         }
       );
-      console.log(response.data.tasks);
       if (response.data.success) {
         setTasks(response.data.tasks);
       }
@@ -261,7 +260,6 @@ const Dashboard = () => {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       {/* Header */}
@@ -309,7 +307,7 @@ const Dashboard = () => {
                     {task.status}
                   </span>
                 </td>
-                <td className="p-3">{task.assignedTo}</td>
+                <td className="p-3">{users.find((u) => u._id === task.assignedTo)?.name || "N/A"}</td>
                 <td className="p-3 space-x-3">
                   <button
                     onClick={() => handleView(task)}
