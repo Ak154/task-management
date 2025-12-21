@@ -37,7 +37,7 @@ import { createRequire } from "module";
 import swaggerUi from "swagger-ui-express";
 
 const require = createRequire(import.meta.url);
-const swaggerDocument = require("./swagger-output.json"); // only import JSON
+const swaggerDocument = require("./swagger-output.json");
 
 const app = express();
 app.use(cors());
